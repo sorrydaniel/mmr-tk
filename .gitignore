@@ -1,1 +1,17 @@
 .env
+.env.*
+!.env.example
+
+# MMR/TK source documents — never committed (see CLAUDE.md, Data policy)
+inputs/
+uploads/
+*.docx
+*.pdf
+!docs/**/*.docx
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/

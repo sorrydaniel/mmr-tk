@@ -61,5 +61,11 @@ Tests must **not** require a real database or a real API key:
 ## Data policy
 
 - Only **fictional or sanitised** data is ever used.
+- **Real or sanitised MMR/TK documents are never committed to git.** They exist only as
+  runtime uploads in the Railway database. Only invented test fixtures live in the repo.
+- "Sanitised" is **not** permission to commit. A sanitised real MMR is still a real document.
+- `inputs/`, `uploads/`, `*.docx` and `*.pdf` are gitignored. The only exception is the
+  blank official template `TK_mall_RKIK_tuhi.xlsx`, which contains no requirement content
+  and is committed deliberately as the export base.
 - **Never add real MMR/TK documents** to the repo — not as fixtures, test data, examples, or
   attachments.
