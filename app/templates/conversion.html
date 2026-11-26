@@ -69,7 +69,6 @@
     {{ run.uncertain_rows }} ebaselget ·
     mudeli aeg {{ run.processing_seconds | et_number(1) }} s
     {%- if run.retry_used %} · kordus kasutatud{% endif %}
-    {%- if run.mock %} · mock{% endif %}
   </p>
 {% endif %}
 

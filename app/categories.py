@@ -54,13 +54,31 @@ def classify_source(category: str, headings: list[str], default_list: list[str])
     return NEW
 
 
-def first_category(headings: list[str], default_list: list[str]) -> str:
-    """Where the informative block goes: the MMR's own introductory heading if it has one."""
-    if headings:
-        return headings[0]
-    if default_list:
-        return default_list[0]
-    return FALLBACK_CATEGORY
+def default_category(default_list: list[str]) -> str:
+    """The category for a requirement with no heading above it.
+
+    Deliberately *not* the first MMR heading. A requirement that sits above every
+    heading has no heading, and quietly borrowing the next one made `category_source`
+    read MMR_HEADING for a category the MMR never assigned.
+    """
+    return default_list[0] if default_list else FALLBACK_CATEGORY
+
+
+def match_heading(category: str, headings: list[str]) -> str | None:
+    """The heading that means the same thing, if there is one.
+
+    `Üldine` from the default list and a `1. Üldine` heading normalise to the same key.
+    When that happens the document should use the MMR's own wording, so column A does
+    not show two spellings of one category - but the provenance is still the default
+    list, because that is where the choice came from.
+    """
+    key = normalise_key(category)
+    if not key:
+        return None
+    for heading in headings:
+        if normalise_key(heading) == key:
+            return heading.strip()
+    return None
 
 
 def category_order(categories: list[str], headings: list[str]) -> dict[str, int]:

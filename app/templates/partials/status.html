@@ -3,8 +3,10 @@
      hx-trigger="load delay:1200ms"
      hx-swap="outerHTML"{% endif %}>
 
-  {% if run is none %}
-    <p class="text-sm text-slate-500">Käivitusi veel ei ole.</p>
+  {% if run is none or run.status == 'done' %}
+    {# Nothing to say: either no run yet, or it finished and the result line below says
+       everything. Leaving the progress panel up made a finished run look like a running
+       one, spinner and all. The div itself stays, because it is the hx-target. #}
 
   {% elif run.status == 'failed' %}
     <div class="rounded-xl border border-rose-200 bg-rose-50 p-4">

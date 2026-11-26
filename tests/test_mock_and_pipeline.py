@@ -43,6 +43,48 @@ def test_segment_above_the_first_heading_has_no_category_to_inherit():
     assert lookup["S1"] == ""
 
 
+def _row_by_segment(conversion, sid: str):
+    return next(r for r in conversion.requirements if sid in r.source_segments)
+
+
+def test_requirement_above_the_first_heading_comes_from_the_default_list(seeded):
+    """It must not quietly borrow the heading below it.
+
+    S1 sits above "1. Üldine", so the MMR assigned it no category at all. Reporting
+    MMR_HEADING there would make the research field claim a provenance the MMR never
+    had - and it made category_source a constant across the whole sample.
+    """
+    session = seeded
+    conversion, _ = _run(session)
+    row = _row_by_segment(conversion, "S1")
+    assert row.category_source == "DEFAULT_LIST"
+
+
+def test_default_category_borrows_the_mmr_wording_when_it_means_the_same(seeded):
+    """"Üldine" and a "1. Üldine" heading are one category, so column A shows one
+    spelling - while the provenance still records the default list."""
+    session = seeded
+    conversion, _ = _run(session)
+    row = _row_by_segment(conversion, "S1")
+    assert row.category == "1. Üldine"
+    assert row.category_source == "DEFAULT_LIST"
+
+
+def test_rows_under_a_heading_are_tagged_as_coming_from_the_mmr(seeded):
+    session = seeded
+    conversion, _ = _run(session)
+    assert _row_by_segment(conversion, "S10").category == "2. Kaitse ja keskkond"
+    assert _row_by_segment(conversion, "S10").category_source == "MMR_HEADING"
+
+
+def test_category_source_is_not_a_constant_across_the_sample(seeded):
+    """The fixture exists to exercise both paths; if it only ever produces one value
+    the field is useless as research data."""
+    session = seeded
+    conversion, _ = _run(session)
+    assert len({r.category_source for r in conversion.requirements}) > 1
+
+
 def _run(session) -> tuple[Conversion, Run]:
     conversion = Conversion(
         title="Test", mmr_id="mmr_test", mmr_text=SAMPLE_MMR_TEXT, procurement_profile="COTS"

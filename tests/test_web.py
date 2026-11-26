@@ -85,6 +85,37 @@ def test_end_to_end_convert_then_edit_then_export(client):
     assert export.content[:2] == b"PK"
 
 
+def test_finished_run_does_not_still_show_a_spinner(client):
+    """A done run used to fall through to the in-progress branch, so the page showed
+    "Konverteerin…" with a spinning icon next to the word "Valmis", forever."""
+    client.post("/k/1/konverteeri")
+    page = client.get("/k/1")
+    assert "Konverteerin" not in page.text
+    assert "animate-spin" not in page.text
+    assert 'id="status"' in page.text  # the hx-target must survive
+
+
+def test_in_progress_run_does_show_the_panel(client, engine):
+    from sqlalchemy.orm import Session
+
+    from app.models import Run
+
+    with Session(engine) as session:
+        session.add(Run(conversion_id=1, mmr_id="mmr_naidis_01", status="calling"))
+        session.commit()
+
+    page = client.get("/k/1")
+    assert "Konverteerin" in page.text
+    assert "Mudeli päring" in page.text
+
+
+def test_run_summary_does_not_say_mock_twice(client):
+    client.post("/k/1/konverteeri")
+    page = client.get("/k/1")
+    summary = page.text.split("Viimane käivitus:")[1].split("</p>")[0]
+    assert summary.count("mock") == 1
+
+
 def test_rejects_an_illegal_dropdown_value(client):
     client.post("/k/1/konverteeri")
     import re

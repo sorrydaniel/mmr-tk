@@ -13,9 +13,12 @@ from sqlalchemy.orm import Session
 
 from app import settings_store
 from app.categories import (
+    DEFAULT_LIST,
+    MMR_HEADING,
     classify_source,
-    first_category,
+    default_category,
     heading_categories,
+    match_heading,
     normalise_key,
 )
 from app.classification import UNCERTAIN_CLASSIFICATION_REASON, backfill_signal
@@ -59,14 +62,28 @@ def heading_lookup(segments: list[Seg]) -> dict[str, str]:
 
 def _resolved_category(
     row: LlmRow, lookup: dict[str, str], headings: list[str], default_list: list[str]
-) -> str:
+) -> tuple[str, str]:
+    """Return (category, category_source).
+
+    The source records the decision that was actually taken, rather than being inferred
+    back out of the resulting string. Those differ: a default-list category can happen
+    to spell the same thing as an MMR heading, and calling that MMR_HEADING would make
+    the research field report a provenance the MMR never had.
+    """
     if (row.category or "").strip():
-        return row.category.strip()
+        stated = row.category.strip()
+        # The model asserted a category, so the only thing left is to check its claim.
+        return stated, classify_source(stated, headings, default_list)
+
     for sid in row.source_segments:
         inherited = lookup.get(sid, "")
         if inherited:
-            return inherited
-    return first_category(headings, default_list)
+            return inherited, MMR_HEADING
+
+    fallback = default_category(default_list)
+    # Prefer the MMR's own wording where it means the same thing, so the exported
+    # column A does not show two spellings of one category.
+    return match_heading(fallback, headings) or fallback, DEFAULT_LIST
 
 
 def build_requirements(
@@ -86,7 +103,7 @@ def build_requirements(
 
     prepared: list[Requirement] = []
     for row in rows:
-        category = _resolved_category(row, lookup, headings, default_list)
+        category, category_source = _resolved_category(row, lookup, headings, default_list)
         signal = row.classification_signal or backfill_signal(row.classification, row.description)
 
         verification = resolve(
@@ -108,7 +125,7 @@ def build_requirements(
             Requirement(
                 conversion_id=conversion.id,
                 category=category,
-                category_source=classify_source(category, headings, default_list),
+                category_source=category_source,
                 description=row.description,
                 classification=row.classification,
                 classification_signal=signal,

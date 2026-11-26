@@ -219,6 +219,19 @@ Hybrid, with a strong preference for the MMR:
 For ordering and matching, the category key is normalised (strip leading `3.` numbering, trim,
 casefold); the original string is always what is displayed and exported.
 
+**A requirement that sits above every heading has no heading**, and must not borrow the one
+below it — it takes rule 2. Two consequences, both deliberate:
+
+- `category_source` records **the decision that was taken**, not a string match made
+  afterwards. A default-list category can spell the same thing as an MMR heading
+  (`Üldine` vs `1. Üldine` normalise to one key); that is still `DEFAULT_LIST`, because
+  the MMR never put the requirement there.
+- The **wording** is borrowed from the matching heading anyway, so exported column A shows
+  one spelling per category rather than two.
+
+Only a category the model states itself is classified by matching the string, since there
+the model has made the claim and all that is left is to check it.
+
 ---
 
 ## 10. Verification (columns D, E, F)
