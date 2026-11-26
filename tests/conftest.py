@@ -68,11 +68,23 @@ def seeded(session):
     return session
 
 
+def build_app():
+    """Rebuild the application against the current environment.
+
+    SessionMiddleware captures its secret key and cookie flags when it is added, which
+    happens at import time, so a test that changes APP_PASSWORD or SESSION_HTTPS_ONLY
+    has to re-import the module to see the effect.
+    """
+    import importlib
+
+    import app.main
+
+    return importlib.reload(app.main).app
+
+
 @pytest.fixture
 def client(engine):
     from fastapi.testclient import TestClient
 
-    from app.main import app
-
-    with TestClient(app) as test_client:
+    with TestClient(build_app()) as test_client:
         yield test_client

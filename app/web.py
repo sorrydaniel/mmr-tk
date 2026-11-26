@@ -80,13 +80,29 @@ templates.env.globals["segment_type_labels"] = SEGMENT_TYPE_LABELS
 templates.env.globals["category_source_labels"] = CATEGORY_SOURCE_LABELS
 
 
+class SessionUnavailable(RuntimeError):
+    """The session middleware did not run before the code asking for the session.
+
+    This used to be swallowed and reported as "not authenticated", which turned a
+    structural misconfiguration into an unexplainable redirect loop: the login cookie was
+    set correctly and then ignored on the very next request.
+    """
+
+
+def session_of(request: Request) -> dict:
+    session = request.scope.get("session")
+    if session is None:
+        raise SessionUnavailable(
+            "SessionMiddleware ei ole jooksnud enne autentimise kontrolli. "
+            "SessionMiddleware peab olema väliseim vahevara."
+        )
+    return session
+
+
 def is_authenticated(request: Request) -> bool:
     if not get_config().login_required:
         return True
-    try:
-        return bool(request.session.get(SESSION_AUTH_KEY))
-    except AssertionError:  # pragma: no cover - session middleware missing
-        return False
+    return bool(session_of(request).get(SESSION_AUTH_KEY))
 
 
 def is_public_path(path: str) -> bool:

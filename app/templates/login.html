@@ -15,6 +15,15 @@
       <p class="mt-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{{ error }}</p>
     {% endif %}
 
+    {% if ephemeral_sessions %}
+      <div class="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+        <strong class="font-semibold">SECRET_KEY puudub.</strong>
+        Sessiooni võti luuakse igal käivitusel uuesti: iga taaskäivitus logib sind välja ja
+        mitme tööprotsessi korral ei õnnestu sisse logida üldse. Sea Railway
+        keskkonnamuutuja <code class="rounded bg-amber-100 px-1">SECRET_KEY</code>.
+      </div>
+    {% endif %}
+
     <form method="post" action="/login" class="mt-5 space-y-4">
       <div>
         <label for="password" class="block text-sm font-medium text-slate-700">Parool</label>

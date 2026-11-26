@@ -34,7 +34,14 @@ alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
 | `ANTHROPIC_API_KEY` | ei | Puudub → mock-konverter + kollane bänner. **Avaliku URL-i puhul tähendab see, et võõrad ei saa krediiti kulutada.** |
 | `ANTHROPIC_MODEL` | ei | Vaikimisi `claude-sonnet-5-5` |
 | `APP_PASSWORD` | ei, aga soovitatav | Seatud → kogu rakendus ühe jagatud parooli taga |
-| `SECRET_KEY` | ei | Allkirjastab sessiooniküpsise. Puudub → genereeritakse igal käivitusel, mis logib kõik välja |
+| `SECRET_KEY` | **jah, kui `APP_PASSWORD` on seatud** | Allkirjastab sessiooniküpsise. Puudub → luuakse igas protsessis eraldi, mis logib iga taaskäivitusel välja ja mitme tööprotsessi korral ei lase üldse sisse logida. Logitakse käivitusel ja näidatakse login-lehel. |
+| `SESSION_HTTPS_ONLY` | ei | `true` lisab küpsisele `Secure`. Vaikimisi väljas, sest Railway lõpetab TLS-i oma proxy's ja rakendus ise näeb ainult HTTP-d |
+
+Küpsis on `httponly`, `samesite=lax`, `path=/`, ilma `Domain`-ita, eluaeg 14 päeva.
+Uvicorn käib **ühe tööprotsessiga** (`--workers` ei ole seatud) ja `--proxy-headers
+--forwarded-allow-ips=*`-ga, nii et proxy taga on skeem ja host õiged. Kui tööprotsesse
+kunagi juurde panna, peab `SECRET_KEY` olema kindlasti seatud — muidu allkirjastab iga
+protsess oma võtmega ja sisselogimine ei püsi.
 
 `/health` vastab 200 ka siis, kui andmebaas ei vasta — muidu tapaks platvormi tervisekontroll
 konteineri, mis lihtsalt ootab andmebaasi.

@@ -177,36 +177,131 @@ def test_reset_prompt_restores_the_default(client):
 # --- login protection ---------------------------------------------------------------------
 
 
-def test_everything_is_protected_when_app_password_is_set(engine, monkeypatch):
+def _protected_client(engine, monkeypatch, **env):
     from fastapi.testclient import TestClient
 
+    from tests.conftest import build_app
+
     monkeypatch.setenv("APP_PASSWORD", "saladus")
+    monkeypatch.setenv("SECRET_KEY", "stable-test-key")
+    for key, value in env.items():
+        monkeypatch.setenv(key, value)
     reload_config()
+    return TestClient(build_app())
 
-    from app.main import app
 
-    with TestClient(app) as client:
+def test_session_middleware_is_outermost():
+    """The login check reads the session, so the session must be established first.
+
+    Reversing this is what made a correct password bounce straight back to the login
+    page: the cookie was set, and then the next request could not read it.
+    """
+    import app.main as main_module
+
+    from app.main import assert_session_before_auth
+
+    names = [m.cls.__name__ for m in main_module.app.user_middleware]
+    assert names.index("SessionMiddleware") < names.index("BaseHTTPMiddleware")
+    assert_session_before_auth()
+
+
+def test_everything_is_protected_when_app_password_is_set(engine, monkeypatch):
+    with _protected_client(engine, monkeypatch) as client:
         # Health stays open, or the platform health check would kill the container.
         assert client.get("/health").status_code == 200
 
-        redirected = client.get("/", follow_redirects=False)
-        assert redirected.status_code == 303
-        assert redirected.headers["location"] == "/login"
+        for path in ("/", "/logi", "/seaded", "/k/1"):
+            response = client.get(path, follow_redirects=False)
+            assert response.status_code == 303, path
+            assert response.headers["location"] == "/login", path
 
-        assert client.get("/logi", follow_redirects=False).status_code == 303
-        assert client.get("/seaded", follow_redirects=False).status_code == 303
-
-        # Wrong password is refused.
         assert client.post("/login", data={"password": "vale"}).status_code == 401
 
-        # Right password lets us in.
-        logged_in = client.post("/login", data={"password": "saladus"}, follow_redirects=False)
-        assert logged_in.status_code == 303
-        assert client.get("/").status_code == 200
 
-        # And out again.
+def test_login_then_following_the_redirect_lands_in_the_app(engine, monkeypatch):
+    """The regression test for the redirect loop: log in, follow the redirect with the
+    cookie, and check we get the application and not the login form again."""
+    with _protected_client(engine, monkeypatch) as client:
+        response = client.post(
+            "/login", data={"password": "saladus"}, follow_redirects=True
+        )
+        assert response.status_code == 200
+        assert str(response.url).endswith("/")
+        # The sidebar only exists once past the login page.
+        assert "Konversioonid" in response.text
+        assert 'name="password"' not in response.text
+
+        # And the session keeps working on subsequent requests.
+        follow_up = client.get("/", follow_redirects=False)
+        assert follow_up.status_code == 200
+        assert client.get("/logi", follow_redirects=False).status_code == 200
+
+
+def test_redirect_after_login_is_relative(engine, monkeypatch):
+    """An absolute URL would carry the scheme the app sees, which behind a
+    TLS-terminating proxy is http - downgrading the browser from https."""
+    with _protected_client(engine, monkeypatch) as client:
+        response = client.post(
+            "/login", data={"password": "saladus"}, follow_redirects=False
+        )
+        assert response.status_code == 303
+        location = response.headers["location"]
+        assert location == "/"
+        assert not location.startswith(("http://", "https://"))
+
+
+def test_session_cookie_attributes(engine, monkeypatch):
+    from app.config import SESSION_COOKIE_NAME, SESSION_MAX_AGE_SECONDS
+
+    with _protected_client(engine, monkeypatch) as client:
+        response = client.post(
+            "/login", data={"password": "saladus"}, follow_redirects=False
+        )
+        cookie = response.headers["set-cookie"]
+        assert cookie.startswith(f"{SESSION_COOKIE_NAME}=")
+        assert "path=/" in cookie.casefold()
+        assert "samesite=lax" in cookie.casefold()
+        assert "httponly" in cookie.casefold()
+        assert f"Max-Age={SESSION_MAX_AGE_SECONDS}" in cookie
+        # No Domain: the cookie belongs to the exact host that served it.
+        assert "domain=" not in cookie.casefold()
+        # Secure is off by default, because Railway's proxy means the app sees http.
+        assert "secure" not in cookie.casefold()
+
+
+def test_secure_cookie_can_be_switched_on(engine, monkeypatch):
+    with _protected_client(engine, monkeypatch, SESSION_HTTPS_ONLY="true") as client:
+        response = client.post(
+            "/login", data={"password": "saladus"}, follow_redirects=False
+        )
+        assert "secure" in response.headers["set-cookie"].casefold()
+
+
+def test_logout_ends_the_session(engine, monkeypatch):
+    with _protected_client(engine, monkeypatch) as client:
+        client.post("/login", data={"password": "saladus"}, follow_redirects=False)
+        assert client.get("/", follow_redirects=False).status_code == 200
+
         client.post("/logout", follow_redirects=False)
         assert client.get("/", follow_redirects=False).status_code == 303
+
+
+def test_missing_secret_key_is_reported_on_the_login_page(engine, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from tests.conftest import build_app
+
+    monkeypatch.setenv("APP_PASSWORD", "saladus")
+    monkeypatch.delenv("SECRET_KEY", raising=False)
+    reload_config()
+
+    with TestClient(build_app()) as client:
+        assert "SECRET_KEY puudub" in client.get("/login").text
+
+
+def test_stable_secret_key_is_not_reported(engine, monkeypatch):
+    with _protected_client(engine, monkeypatch) as client:
+        assert "SECRET_KEY puudub" not in client.get("/login").text
 
 
 def test_htmx_requests_get_a_redirect_header_not_a_body(engine, monkeypatch):
