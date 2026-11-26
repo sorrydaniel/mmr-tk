@@ -10,6 +10,7 @@ waiting for its database.
 from __future__ import annotations
 
 import logging
+import os
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response
@@ -75,6 +76,23 @@ def on_startup() -> None:
     assert_session_before_auth()
 
     cfg = get_config()
+
+    # One line that answers "which build is live and how is it configured?" from the
+    # platform log. Booleans and a commit sha only - no secrets, and nothing is exposed
+    # on a public endpoint.
+    commit = (os.environ.get("RAILWAY_GIT_COMMIT_SHA") or "").strip()
+    logger.info(
+        "Käivitus: commit=%s mudel=%s mock=%s login=%s secret_key_env=%s https_only=%s "
+        "session_cookie=%s",
+        commit[:8] or "teadmata",
+        cfg.anthropic_model,
+        cfg.mock_mode,
+        cfg.login_required,
+        cfg.secret_key_from_env,
+        cfg.session_https_only,
+        SESSION_COOKIE_NAME,
+    )
+
     if cfg.ephemeral_sessions:
         logger.critical(
             "SECRET_KEY puudub, aga APP_PASSWORD on seatud: sessiooni võti luuakse igal "
