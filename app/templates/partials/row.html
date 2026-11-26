@@ -1,0 +1,125 @@
+{% set cell = "w-full bg-transparent px-2 py-1 text-sm rounded border border-transparent hover:border-slate-300 focus:border-slate-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-500" %}
+<tr id="row-{{ r.id }}"
+    class="align-top
+      {% if r.uncertain %}bg-[#EFEBF6]
+      {% elif r.classification == 'I' %}bg-slate-50 text-slate-500
+      {% else %}bg-white{% endif %}">
+
+  <td class="border-b border-slate-200 px-1 py-1 align-top">
+    <input name="value" value="{{ r.category }}"
+           hx-post="/rida/{{ r.id }}" hx-vals='{"field": "category"}'
+           hx-trigger="change" hx-target="#row-{{ r.id }}" hx-swap="outerHTML"
+           class="{{ cell }} min-w-[8rem]">
+    {% set label = category_source_labels.get(r.category_source, '') %}
+    {% if label %}
+      <span class="ml-1 rounded bg-slate-100 px-1 text-[10px] uppercase tracking-wide text-slate-500">{{ label }}</span>
+    {% endif %}
+  </td>
+
+  <td class="border-b border-slate-200 px-1 py-1 align-top">
+    <textarea name="value" rows="3"
+              hx-post="/rida/{{ r.id }}" hx-vals='{"field": "description"}'
+              hx-trigger="change" hx-target="#row-{{ r.id }}" hx-swap="outerHTML"
+              class="{{ cell }} min-w-[20rem] resize-y leading-snug">{{ r.description }}</textarea>
+    {% if r.uncertain and r.uncertain_reason %}
+      <p class="mt-1 px-2 text-xs text-purple-800">⚠ {{ r.uncertain_reason }}</p>
+    {% endif %}
+    <div class="mt-1 flex flex-wrap gap-1 px-2">
+      {% if r.edited_by_user %}
+        <span class="rounded bg-sky-50 px-1.5 text-[10px] font-medium text-sky-700">muudetud</span>
+      {% endif %}
+      {% if r.added_by_hand %}
+        <span class="rounded bg-emerald-50 px-1.5 text-[10px] font-medium text-emerald-700">lisatud käsitsi</span>
+      {% endif %}
+      {% if diff %}
+        <span class="rounded bg-slate-100 px-1.5 text-[10px] text-slate-500"
+              title="Muudetud väljad: {{ diff | join(', ') }}">{{ diff | length }} välja muudetud</span>
+      {% endif %}
+    </div>
+  </td>
+
+  <td class="border-b border-slate-200 px-1 py-1 align-top">
+    <select name="value"
+            hx-post="/rida/{{ r.id }}" hx-vals='{"field": "classification"}'
+            hx-trigger="change" hx-target="#row-{{ r.id }}" hx-swap="outerHTML"
+            class="{{ cell }}">
+      {% for c in classifications %}
+        <option value="{{ c }}" {% if r.classification == c %}selected{% endif %}>{{ c }}</option>
+      {% endfor %}
+    </select>
+    {% if r.classification_signal %}
+      <p class="px-2 text-[10px] text-slate-400">„{{ r.classification_signal }}“</p>
+    {% endif %}
+  </td>
+
+  <td class="border-b border-slate-200 px-1 py-1 align-top">
+    <input name="value" value="{{ r.verif_with_bid }}"
+           hx-post="/rida/{{ r.id }}" hx-vals='{"field": "verif_with_bid"}'
+           hx-trigger="change" hx-target="#row-{{ r.id }}" hx-swap="outerHTML"
+           class="{{ cell }} min-w-[8rem]">
+  </td>
+
+  <td class="border-b border-slate-200 px-1 py-1 align-top">
+    <select name="value"
+            hx-post="/rida/{{ r.id }}" hx-vals='{"field": "verif_method"}'
+            hx-trigger="change" hx-target="#row-{{ r.id }}" hx-swap="outerHTML"
+            class="{{ cell }} min-w-[11rem]">
+      {% for m in methods %}
+        <option value="{{ m }}" {% if r.verif_method == m %}selected{% endif %}>{{ m }}</option>
+      {% endfor %}
+    </select>
+    {% if r.verif_source == 'MMR_EXPLICIT' %}
+      <p class="px-2 text-[10px] text-amber-700" title="{{ r.verif_quote or '' }}">MMR-ist</p>
+    {% endif %}
+  </td>
+
+  <td class="border-b border-slate-200 px-1 py-1 align-top">
+    <select name="value"
+            hx-post="/rida/{{ r.id }}" hx-vals='{"field": "verif_stage"}'
+            hx-trigger="change" hx-target="#row-{{ r.id }}" hx-swap="outerHTML"
+            class="{{ cell }} min-w-[10rem]">
+      {% for s in stages %}
+        <option value="{{ s }}" {% if r.verif_stage == s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </td>
+
+  <td class="border-b border-slate-200 px-1 py-1 align-top">
+    <textarea name="value" rows="2"
+              hx-post="/rida/{{ r.id }}" hx-vals='{"field": "verif_description"}'
+              hx-trigger="change" hx-target="#row-{{ r.id }}" hx-swap="outerHTML"
+              class="{{ cell }} min-w-[10rem] resize-y">{{ r.verif_description }}</textarea>
+  </td>
+
+  <td class="border-b border-slate-200 px-1 py-1 align-top">
+    <textarea name="value" rows="2"
+              hx-post="/rida/{{ r.id }}" hx-vals='{"field": "comments"}'
+              hx-trigger="change" hx-target="#row-{{ r.id }}" hx-swap="outerHTML"
+              class="{{ cell }} min-w-[10rem] resize-y">{{ r.comments }}</textarea>
+  </td>
+
+  <td class="border-b border-slate-200 px-2 py-2 align-top text-xs text-slate-500">
+    {% for sid in r.source_segments %}
+      <span class="cursor-help underline decoration-dotted"
+            title="{{ segment_text.get(sid, 'Lõiku ei leitud') }}">{{ sid }}</span>{% if not loop.last %}, {% endif %}
+    {% endfor %}
+  </td>
+
+  <td class="border-b border-slate-200 px-1 py-2 align-top">
+    <div class="flex items-center gap-0.5">
+      <button hx-post="/rida/{{ r.id }}/liiguta" hx-vals='{"direction": "up"}'
+              hx-target="#tk-table" hx-swap="outerHTML"
+              title="Liiguta üles" aria-label="Liiguta üles"
+              class="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700">▲</button>
+      <button hx-post="/rida/{{ r.id }}/liiguta" hx-vals='{"direction": "down"}'
+              hx-target="#tk-table" hx-swap="outerHTML"
+              title="Liiguta alla" aria-label="Liiguta alla"
+              class="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700">▼</button>
+      <button hx-post="/rida/{{ r.id }}/kustuta"
+              hx-confirm="Kustutada see rida? Rida jääb uurimisandmetesse alles."
+              hx-target="#tk-table" hx-swap="outerHTML"
+              title="Kustuta rida" aria-label="Kustuta rida"
+              class="rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600">✕</button>
+    </div>
+  </td>
+</tr>

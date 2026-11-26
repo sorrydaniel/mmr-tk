@@ -12,33 +12,37 @@ and 3 ship as code only and never migrate a database that by then holds real stu
 Done when the app is live on its Railway URL, a sample MMR converts end to end in both mock and
 LLM mode, and the clean TK downloads in the real template layout.
 
-- [ ] Project skeleton: `requirements.txt`, `.python-version`, `.env.example`, `railway.json`
-- [ ] `DATABASE_URL` rewrite to `postgresql+psycopg://`, engine, session
-- [ ] All models for phases 1–3 + initial Alembic migration
-- [ ] Startup seeding: system prompt, category list, verification mapping, classification fills, invented sample MMR
-- [ ] Login: `APP_PASSWORD` + session cookie, whole app protected when set
-- [ ] `/health` returns 200
-- [ ] Friendly Estonian DB-unreachable error page
-- [ ] Layout: sidebar (conversions, delete with confirm, `Uus konversioon`, `Käivituste logi`, `Seaded`), mobile hamburger
-- [ ] New conversion: title, `mmr_id`, `procurement_profile`, paste or upload `.docx` / `.pdf` / `.txt`, max 5 MB
-- [ ] Segmentation: HEADING / BULLET / TABLE_ROW / SENTENCE, Estonian abbreviation list, docx structure, numbered MMR panel
-- [ ] Background conversion task with HTMX polling, progress states, streaming, ≥16k output
-- [ ] Orphaned-run recovery on startup + `Proovi uuesti`
-- [ ] Mock converter + yellow "Mock mode – no API key" banner
-- [ ] Pydantic validation, one retry with the error message, failed run on second failure
-- [ ] Immutable `RequirementSnapshot` written at creation
-- [ ] Classification signal rules, `classification_signal`
-- [ ] Category resolution (MMR heading → default list → new) with `category_source`
-- [ ] Verification mapping `(requirement_type, procurement_profile)`, `MMR_EXPLICIT` override
-- [ ] Row ordering: I block first, then category order, then original order
-- [ ] Paranda mode: inline edit, immediate save, dropdowns, soft delete, add row, move up/down, uncertain purple, I greyed, source hover
-- [ ] Clean TK export by filling the committed blank template; row insertion, dropdown re-add, fills cleared then classification fill applied
-- [ ] Run log page + `Ekspordi CSV`
-- [ ] Settings: model, temperature, system prompt with `Taasta vaikimisi`, category list, mapping table, classification fills with colour preview
-- [ ] Tests per SPEC §21
+- [x] Project skeleton: `requirements.txt`, `.python-version`, `.env.example`, `railway.json`
+- [x] `DATABASE_URL` rewrite to `postgresql+psycopg://`, engine, session
+- [x] All models for phases 1–3 + initial Alembic migration
+- [x] Startup seeding: system prompt, category list, verification mapping, classification fills, invented sample MMR
+- [x] Login: `APP_PASSWORD` + session cookie, whole app protected when set
+- [x] `/health` returns 200
+- [x] Friendly Estonian DB-unreachable error page
+- [x] Layout: sidebar (conversions, delete with confirm, `Uus konversioon`, `Käivituste logi`, `Seaded`), mobile hamburger
+- [x] New conversion: title, `mmr_id`, `procurement_profile`, paste or upload `.docx` / `.pdf` / `.txt`, max 5 MB
+- [x] Segmentation: HEADING / BULLET / TABLE_ROW / SENTENCE, Estonian abbreviation list, docx structure, numbered MMR panel
+- [x] Background conversion task with HTMX polling, progress states, streaming, ≥16k output
+- [x] Orphaned-run recovery on startup + `Proovi uuesti`
+- [x] Mock converter + yellow "Mock mode – no API key" banner
+- [x] Pydantic validation, one retry with the error message, failed run on second failure
+- [x] Immutable `RequirementSnapshot` written at creation
+- [x] Classification signal rules, `classification_signal`
+- [x] Category resolution (MMR heading → default list → new) with `category_source`
+- [x] Verification mapping `(requirement_type, procurement_profile)`, `MMR_EXPLICIT` override
+- [x] Row ordering: I block first, then category order, then original order
+- [x] Paranda mode: inline edit, immediate save, dropdowns, soft delete, add row, move up/down, uncertain purple, I greyed, source hover
+- [x] Clean TK export by filling the committed blank template; row insertion, dropdown re-add, fills cleared then classification fill applied
+- [x] Run log page + `Ekspordi CSV`
+- [x] Settings: model, temperature, system prompt with `Taasta vaikimisi`, category list, mapping table, classification fills with colour preview
+- [x] Tests per SPEC §21
 - [ ] Commit, push, **confirm the Railway deploy works**
 
 ---
+
+> **Not covered by tests:** the real Anthropic path (`app/converter/anthropic_client.py`).
+> Every test runs the mock converter, so streaming, token accounting and the single
+> schema retry are verified only by reading the code until the first run with a key.
 
 ## Phase 2 — Part 1 research tooling
 

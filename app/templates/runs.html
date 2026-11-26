@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Käivituste logi{% endblock %}
+{% block content %}
+
+<div class="flex flex-wrap items-center justify-between gap-3">
+  <div>
+    <h2 class="text-lg font-semibold text-slate-900">Käivituste logi</h2>
+    <p class="mt-1 text-xs text-slate-500">
+      Iga teisenduskatse uurimisandmed. Mudeli aeg on eraldi järjekorras ootamise ajast.
+    </p>
+  </div>
+  <a href="/logi/csv"
+     class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+    Ekspordi CSV
+  </a>
+</div>
+
+{% if runs %}
+  <div class="mt-5 overflow-x-auto rounded-xl border border-slate-200 bg-white">
+    <table class="min-w-full text-sm">
+      <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <tr>
+          <th class="border-b border-slate-200 px-3 py-2">MMR</th>
+          <th class="border-b border-slate-200 px-3 py-2">Aeg</th>
+          <th class="border-b border-slate-200 px-3 py-2">Mudel</th>
+          <th class="border-b border-slate-200 px-3 py-2 text-right">Sisend</th>
+          <th class="border-b border-slate-200 px-3 py-2 text-right">Väljund</th>
+          <th class="border-b border-slate-200 px-3 py-2 text-right">Mudeli aeg</th>
+          <th class="border-b border-slate-200 px-3 py-2 text-right">Järjekord</th>
+          <th class="border-b border-slate-200 px-3 py-2 text-right">Ridu</th>
+          <th class="border-b border-slate-200 px-3 py-2">Skeem</th>
+          <th class="border-b border-slate-200 px-3 py-2 text-right">Ebaselged</th>
+          <th class="border-b border-slate-200 px-3 py-2">Kordus</th>
+          <th class="border-b border-slate-200 px-3 py-2">Mock</th>
+          <th class="border-b border-slate-200 px-3 py-2">Staatus</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for run in runs %}
+          <tr class="{% if run.status == 'failed' %}bg-rose-50/40{% else %}bg-white{% endif %}">
+            <td class="border-b border-slate-100 px-3 py-2 font-mono text-xs">
+              {% if run.conversion_id %}
+                <a class="text-navy-800 underline decoration-dotted" href="/k/{{ run.conversion_id }}">{{ run.mmr_id }}</a>
+              {% else %}{{ run.mmr_id }}{% endif %}
+            </td>
+            <td class="border-b border-slate-100 px-3 py-2 whitespace-nowrap text-xs text-slate-500">{{ run.created_at | et_datetime }}</td>
+            <td class="border-b border-slate-100 px-3 py-2 text-xs">{{ run.model }}</td>
+            <td class="border-b border-slate-100 px-3 py-2 text-right text-xs">{{ run.input_tokens }}</td>
+            <td class="border-b border-slate-100 px-3 py-2 text-right text-xs">{{ run.output_tokens }}</td>
+            <td class="border-b border-slate-100 px-3 py-2 text-right text-xs">{{ run.processing_seconds | et_number(1) }} s</td>
+            <td class="border-b border-slate-100 px-3 py-2 text-right text-xs text-slate-400">{{ run.queue_seconds | et_number(1) }} s</td>
+            <td class="border-b border-slate-100 px-3 py-2 text-right text-xs">{{ run.rows_generated }}</td>
+            <td class="border-b border-slate-100 px-3 py-2 text-xs">{{ 'jah' if run.schema_valid else 'ei' }}</td>
+            <td class="border-b border-slate-100 px-3 py-2 text-right text-xs">{{ run.uncertain_rows }}</td>
+            <td class="border-b border-slate-100 px-3 py-2 text-xs">{{ 'jah' if run.retry_used else 'ei' }}</td>
+            <td class="border-b border-slate-100 px-3 py-2 text-xs">{{ 'jah' if run.mock else 'ei' }}</td>
+            <td class="border-b border-slate-100 px-3 py-2 text-xs">
+              <span class="rounded px-1.5 py-0.5
+                {% if run.status == 'done' %}bg-emerald-50 text-emerald-700
+                {% elif run.status == 'failed' %}bg-rose-50 text-rose-700
+                {% else %}bg-slate-100 text-slate-600{% endif %}"
+                {% if run.error %}title="{{ run.error }}"{% endif %}>
+                {{ run_status_labels.get(run.status, run.status) }}
+              </span>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <p class="mt-3 text-xs text-slate-500">
+    Ülevaatuste tabel lisandub 3. faasis (Hinda-režiim, kolm hindajat).
+  </p>
+{% else %}
+  <p class="mt-6 rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-600">
+    Käivitusi veel ei ole.
+  </p>
+{% endif %}
+
+{% endblock %}

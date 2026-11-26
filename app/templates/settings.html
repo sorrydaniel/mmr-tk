@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}Seaded{% endblock %}
+{% block content %}
+
+<div class="mx-auto max-w-4xl">
+  <h2 class="text-lg font-semibold text-slate-900">Seaded</h2>
+
+  {% if message %}
+    <p class="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{{ message }}</p>
+  {% endif %}
+  {% if error %}
+    <p class="mt-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{{ error }}</p>
+  {% endif %}
+
+  <form method="post" action="/seaded" class="mt-6 space-y-8">
+
+    <section class="rounded-xl border border-slate-200 bg-white p-5">
+      <h3 class="text-sm font-semibold text-slate-800">Mudel</h3>
+      <div class="mt-4 grid gap-4 sm:grid-cols-2">
+        <div>
+          <label for="model" class="block text-sm font-medium text-slate-700">Mudeli nimi</label>
+          <input id="model" name="model" value="{{ values.model }}"
+                 class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm">
+        </div>
+        <div>
+          <label for="temperature" class="block text-sm font-medium text-slate-700">
+            Temperatuur: <span id="temp-value" class="font-mono">{{ values.temperature }}</span>
+          </label>
+          <input id="temperature" name="temperature" type="range" min="0" max="1" step="0.1"
+                 value="{{ values.temperature }}"
+                 oninput="document.getElementById('temp-value').textContent = this.value"
+                 class="mt-3 w-full">
+        </div>
+      </div>
+    </section>
+
+    <section class="rounded-xl border border-slate-200 bg-white p-5">
+      <div class="flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-slate-800">Süsteemiprompt</h3>
+        <button type="submit" name="action" value="reset_prompt"
+                class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
+          Taasta vaikimisi
+        </button>
+      </div>
+      <textarea name="system_prompt" rows="18"
+                class="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-xs leading-relaxed">{{ values.system_prompt }}</textarea>
+    </section>
+
+    <section class="rounded-xl border border-slate-200 bg-white p-5">
+      <h3 class="text-sm font-semibold text-slate-800">Vaikimisi kategooriad</h3>
+      <p class="mt-1 text-xs text-slate-500">
+        Kasutatakse ainult siis, kui MMR-is pole nõude kohal pealkirja. Üks rea kohta.
+      </p>
+      <textarea name="default_categories" rows="8"
+                class="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">{{ categories | join('\n') }}</textarea>
+    </section>
+
+    <section class="rounded-xl border border-slate-200 bg-white p-5">
+      <h3 class="text-sm font-semibold text-slate-800">Klassifikatsiooni värvid (veerg C)</h3>
+      <p class="mt-1 text-xs text-slate-500">
+        ARGB hex, nagu RKIK mallis. M ja I on loetud päris mallist; N ja OP on teadmata, kuni
+        avad täidetud TK – tühi väärtus ei värvi midagi.
+      </p>
+      <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {% for key, label in [('class_fill_M', 'M – kohustuslik'), ('class_fill_N', 'N – läbiräägitav'), ('class_fill_I', 'I – informatiivne'), ('class_fill_OP', 'OP – optsioon')] %}
+          <div>
+            <label for="{{ key }}" class="block text-sm font-medium text-slate-700">{{ label }}</label>
+            <div class="mt-1 flex items-center gap-2">
+              <span class="h-8 w-8 shrink-0 rounded border border-slate-300"
+                    style="background-color: {% if values[key] %}#{{ values[key][-6:] }}{% else %}transparent{% endif %}"></span>
+              <input id="{{ key }}" name="{{ key }}" value="{{ values[key] }}" placeholder="tühi"
+                     class="w-full rounded-lg border border-slate-300 px-2 py-1.5 font-mono text-xs uppercase">
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="mt-5 max-w-xs">
+        <label for="uncertain_fill" class="block text-sm font-medium text-slate-700">Ebaselge rea värv (ainult rakenduses ja uurimiskoopias)</label>
+        <div class="mt-1 flex items-center gap-2">
+          <span class="h-8 w-8 shrink-0 rounded border border-slate-300"
+                style="background-color: {% if values.uncertain_fill %}#{{ values.uncertain_fill[-6:] }}{% else %}transparent{% endif %}"></span>
+          <input id="uncertain_fill" name="uncertain_fill" value="{{ values.uncertain_fill }}"
+                 class="w-full rounded-lg border border-slate-300 px-2 py-1.5 font-mono text-xs uppercase">
+        </div>
+        <p class="mt-1 text-xs text-slate-500">Puhtas TK-s seda kunagi ei kasutata.</p>
+      </div>
+    </section>
+
+    <section class="rounded-xl border border-slate-200 bg-white p-5">
+      <h3 class="text-sm font-semibold text-slate-800">Verifitseerimise tabel</h3>
+      <p class="mt-1 text-xs text-slate-500">
+        Mudel määrab nõudetüübi; meetod ja etapp tulevad siit, hanke profiili järgi.
+        <code class="rounded bg-slate-100 px-1">Verif. koos pakkumusega</code> kehtib ainult M-ridadele,
+        ülejäänud saavad „ei“.
+      </p>
+
+      {% for profile in profiles %}
+        <div class="mt-5">
+          <h4 class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ profile }}</h4>
+          <div class="mt-2 overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead class="text-left text-xs text-slate-500">
+                <tr>
+                  <th class="py-1 pr-3">Nõudetüüp</th>
+                  <th class="py-1 pr-3">Meetod</th>
+                  <th class="py-1 pr-3">Etapp</th>
+                  <th class="py-1">Koos pakkumusega (M)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for rt in requirement_types %}
+                  {% set entry = mapping.get(profile, {}).get(rt, {}) %}
+                  <tr>
+                    <td class="py-1 pr-3 font-mono text-xs text-slate-600">{{ rt }}</td>
+                    <td class="py-1 pr-3">
+                      <input name="map__{{ profile }}__{{ rt }}__method" value="{{ entry.get('method', '') }}"
+                             class="w-48 rounded border border-slate-300 px-2 py-1 text-xs">
+                    </td>
+                    <td class="py-1 pr-3">
+                      <input name="map__{{ profile }}__{{ rt }}__stage" value="{{ entry.get('stage', '') }}"
+                             class="w-44 rounded border border-slate-300 px-2 py-1 text-xs">
+                    </td>
+                    <td class="py-1">
+                      <input name="map__{{ profile }}__{{ rt }}__with_bid" value="{{ entry.get('with_bid', '') }}"
+                             class="w-40 rounded border border-slate-300 px-2 py-1 text-xs">
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      {% endfor %}
+    </section>
+
+    <section class="rounded-xl border border-slate-200 bg-white p-5">
+      <h3 class="text-sm font-semibold text-slate-800">Ekspordi rühmarida</h3>
+      <label for="group_row_label" class="mt-3 block text-sm font-medium text-slate-700">Rea 23 silt</label>
+      <input id="group_row_label" name="group_row_label" value="{{ values.group_row_label }}"
+             placeholder="tühi = esimene kategooria"
+             class="mt-1 w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-sm">
+      <p class="mt-1 text-xs text-slate-500">
+        RKIK mallis on real 23 rühmarida (ainult veerg B). Tühjaks jättes kirjutatakse sinna
+        esimese kategooria nimi.
+      </p>
+    </section>
+
+    <section class="rounded-xl border border-slate-200 bg-white p-5">
+      <h3 class="text-sm font-semibold text-slate-800">Hinda-režiim (3. faas)</h3>
+      <label class="mt-3 flex items-start gap-2 text-sm text-slate-700">
+        <input type="checkbox" name="hinda_show_hints" value="on" class="mt-0.5"
+               {% if values.hinda_show_hints == 'true' %}checked{% endif %}>
+        <span>
+          Näita hindajatele ebaselge rea esiletõstet ja allikaviiteid
+          <span class="block text-xs text-slate-500">
+            Need on osa sellest, mida uuring testib. Väljalülitamine annab „ilma vihjeteta“ tingimuse.
+          </span>
+        </span>
+      </label>
+    </section>
+
+    <div class="flex gap-2">
+      <button type="submit" class="rounded-lg bg-navy-800 px-4 py-2 text-sm font-medium text-white hover:bg-navy-700">
+        Salvesta
+      </button>
+      <a href="/" class="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Tagasi</a>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

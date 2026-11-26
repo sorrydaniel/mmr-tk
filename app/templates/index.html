@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="mx-auto max-w-2xl py-12 text-center">
+  <h2 class="text-xl font-semibold text-slate-900">MMR → TK konverter</h2>
+  <p class="mx-auto mt-3 max-w-prose text-sm text-slate-600">
+    Kleebi MMR-i tekst või lae dokument üles. Rakendus jagab selle nummerdatud lõikudeks,
+    koostab TK mustandi ja laseb selle rida-realt üle vaadata ning parandada.
+  </p>
+
+  {% if conversions %}
+    <p class="mt-6 text-sm text-slate-500">Vali vasakult konversioon või alusta uut.</p>
+  {% endif %}
+
+  <a href="/uus"
+     class="mt-6 inline-block rounded-lg bg-navy-800 px-4 py-2 text-sm font-medium text-white hover:bg-navy-700">
+    Uus konversioon
+  </a>
+</div>
+{% endblock %}

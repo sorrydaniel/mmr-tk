@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Uus konversioon{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-3xl">
+  <h2 class="text-lg font-semibold text-slate-900">Uus konversioon</h2>
+
+  {% if error %}
+    <p class="mt-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{{ error }}</p>
+  {% endif %}
+
+  <form method="post" action="/uus" enctype="multipart/form-data" class="mt-5 space-y-5">
+    <div class="grid gap-4 sm:grid-cols-3">
+      <div class="sm:col-span-2">
+        <label for="title" class="block text-sm font-medium text-slate-700">Pealkiri</label>
+        <input id="title" name="title" required value="{{ (form.title if form else '') or '' }}"
+               class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500">
+      </div>
+      <div>
+        <label for="mmr_id" class="block text-sm font-medium text-slate-700">MMR ID</label>
+        <input id="mmr_id" name="mmr_id" required placeholder="mmr_03" value="{{ (form.mmr_id if form else '') or '' }}"
+               class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500">
+      </div>
+    </div>
+
+    <div>
+      <label for="procurement_profile" class="block text-sm font-medium text-slate-700">Hanke profiil</label>
+      <select id="procurement_profile" name="procurement_profile"
+              class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm sm:w-56">
+        {% for p in profiles %}
+          <option value="{{ p }}" {% if form and form.procurement_profile == p %}selected{% endif %}>{{ p }}</option>
+        {% endfor %}
+      </select>
+      <p class="mt-1 text-xs text-slate-500">
+        Määrab verifitseerimise meetodi ja etapi, mille tabel igale nõudetüübile annab.
+      </p>
+    </div>
+
+    <div>
+      <label for="mmr_text" class="block text-sm font-medium text-slate-700">MMR tekst</label>
+      <textarea id="mmr_text" name="mmr_text" rows="14"
+                class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm leading-relaxed focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                placeholder="Kleebi MMR-i tekst siia…">{{ (form.mmr_text if form else '') or '' }}</textarea>
+    </div>
+
+    <div>
+      <label for="upload" class="block text-sm font-medium text-slate-700">… või lae fail üles</label>
+      <input id="upload" name="upload" type="file" accept=".docx,.pdf,.txt"
+             class="mt-1 block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:text-slate-700 hover:file:bg-slate-200">
+      <p class="mt-1 text-xs text-slate-500">.docx, .pdf või .txt, kuni 5 MB. Fail asendab ülaloleva teksti.</p>
+    </div>
+
+    <div class="flex gap-2 pt-2">
+      <button type="submit"
+              class="rounded-lg bg-navy-800 px-4 py-2 text-sm font-medium text-white hover:bg-navy-700">
+        Salvesta
+      </button>
+      <button type="reset"
+              class="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+        Tühjenda
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}
