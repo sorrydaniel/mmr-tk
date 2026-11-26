@@ -326,9 +326,39 @@ def segment_upload(filename: str, data: bytes) -> list[Seg]:
     raise UnsupportedUpload("Toetatud failitüübid on .docx, .pdf ja .txt")
 
 
+def render_text(segments: list[Seg]) -> str:
+    """A readable plain-text rendering of segments, for display and storage.
+
+    It also degrades gracefully: headings stand alone between blank lines and bullets
+    keep a marker, so re-segmenting this text reproduces roughly the same structure
+    instead of gluing a bullet onto the end of the sentence above it.
+    """
+    lines: list[str] = []
+    previous = None
+    for seg in segments:
+        if seg.segment_type == HEADING:
+            if lines:
+                lines.append("")
+            lines.append(seg.text)
+            lines.append("")
+        elif seg.segment_type == BULLET:
+            indent = "  " * max(0, (seg.list_level or 1) - 1)
+            lines.append(f"{indent}- {seg.text}")
+        elif seg.segment_type == TABLE_ROW:
+            if previous != TABLE_ROW:
+                lines.append("")
+            lines.append(seg.text)
+        else:
+            if previous in (BULLET, TABLE_ROW):
+                lines.append("")
+            lines.append(seg.text)
+        previous = seg.segment_type
+    return "\n".join(lines).strip() + "\n"
+
+
 def extract_text(filename: str, data: bytes) -> str:
     """Plain text of an upload, for storing on the conversion."""
-    return "\n".join(seg.text for seg in segment_upload(filename, data))
+    return render_text(segment_upload(filename, data))
 
 
 def numbered_text(segments: list[Seg]) -> str:

@@ -117,6 +117,13 @@ def on_startup() -> None:
         logger.error("Startup seeding skipped, database unavailable: %s", exc)
 
 
+@app.on_event("shutdown")
+def on_shutdown() -> None:
+    from app.runner import shutdown as shutdown_runs
+
+    shutdown_runs()
+
+
 @app.get("/health")
 def health() -> JSONResponse:
     return JSONResponse({"status": "ok"})

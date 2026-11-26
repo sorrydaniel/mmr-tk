@@ -8,9 +8,9 @@ orphaned runs are failed on startup instead of sitting at "calling" forever.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
 from sqlalchemy import delete, select, update
@@ -34,7 +34,12 @@ from app.segmentation import Seg, numbered_text, segment_text
 
 logger = logging.getLogger(__name__)
 
-_tasks: set[asyncio.Task] = set()
+# Two workers: one conversion at a time is the realistic load, one spare so a second
+# click is not stuck behind it.
+_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="mmrtk-run")
+
+# Tests set this so a run completes before the assertion that follows it.
+INLINE = False
 
 ORPHAN_ERROR = (
     "Käivitus katkes serveri taaskäivitusel. Vajuta \"Proovi uuesti\", et uuesti alustada."
@@ -151,7 +156,12 @@ def _run_body(run_id: int, mock_delay: float | None, queued_at: float) -> None:
         # 1. splitting
         run.status = "splitting"
         session.commit()
-        segments = segment_text(conversion.mmr_text or "")
+        # Reuse the segmentation stored when the conversion was created. For an upload
+        # that is the only place the document's own structure survives.
+        segments = load_segments(session, conversion.id)
+        if not segments:
+            segments = segment_text(conversion.mmr_text or "")
+            store_segments(session, conversion, segments)
         if not segments:
             raise ConversionFailed("MMR tekst on tühi - ei ole midagi teisendada.")
         if len(segments) > MAX_SEGMENTS:
@@ -159,7 +169,6 @@ def _run_body(run_id: int, mock_delay: float | None, queued_at: float) -> None:
                 f"MMR on liiga pikk: {len(segments)} lõiku, lubatud kuni {MAX_SEGMENTS}. "
                 "Jaga dokument väiksemateks osadeks."
             )
-        store_segments(session, conversion, segments)
         session.commit()
 
         # 2. calling the model
@@ -232,23 +241,28 @@ def _fail(session: Session, run_id: int, message: str, *, retry_used: bool = Fal
 
 
 def run_sync(run_id: int, *, mock_delay: float | None = None) -> None:
-    """Run inline. Used by tests, and as the fallback when there is no event loop."""
+    """Run inline, start to finish. Used by tests."""
     _run_body(run_id, mock_delay, time.perf_counter())
 
 
-def spawn(run_id: int, *, mock_delay: float | None = None) -> None:
-    """Fire and forget on the running event loop."""
+def spawn(run_id: int, *, mock_delay: float | None = None):
+    """Start the run and return immediately.
+
+    This used to hand the work to asyncio, which quietly did nothing: the route that
+    calls it is a sync `def`, so FastAPI runs it in a worker thread where there is no
+    running event loop, and the fallback executed the whole run inline. The POST then
+    blocked for the length of the conversion - 1.8 s with the mock, minutes with a real
+    model, which is exactly the proxy timeout the background design exists to avoid.
+
+    A thread pool has no such dependency on the calling context.
+    """
     queued_at = time.perf_counter()
-
-    async def _wrapper() -> None:
-        await asyncio.to_thread(_run_body, run_id, mock_delay, queued_at)
-
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
+    if INLINE:
         _run_body(run_id, mock_delay, queued_at)
-        return
+        return None
+    return _executor.submit(_run_body, run_id, mock_delay, queued_at)
 
-    task = loop.create_task(_wrapper())
-    _tasks.add(task)
-    task.add_done_callback(_tasks.discard)
+
+def shutdown() -> None:
+    """Stop accepting work at shutdown; anything in flight is recovered on next boot."""
+    _executor.shutdown(wait=False, cancel_futures=True)

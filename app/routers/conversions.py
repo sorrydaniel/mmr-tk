@@ -24,7 +24,7 @@ from app.models import (
     Segment,
 )
 from app.pipeline import changed_fields
-from app.segmentation import UnsupportedUpload, extract_text, segment_text
+from app.segmentation import UnsupportedUpload, render_text, segment_text, segment_upload
 from app.web import render
 
 router = APIRouter()
@@ -109,6 +109,7 @@ async def create(
 ):
     error: str | None = None
     text = (mmr_text or "").strip()
+    segments = None
 
     if upload is not None and upload.filename:
         data = await upload.read()
@@ -116,7 +117,12 @@ async def create(
             error = "Fail on suurem kui 5 MB."
         else:
             try:
-                text = extract_text(upload.filename, data)
+                # Keep the parsed segments. Flattening to text and re-deriving the
+                # structure later threw away everything Word actually told us -
+                # heading styles, list membership, table rows - and merged bullets
+                # into the sentence above them.
+                segments = segment_upload(upload.filename, data)
+                text = render_text(segments)
             except UnsupportedUpload as exc:
                 error = str(exc)
             except Exception as exc:  # noqa: BLE001 - a corrupt upload must not 500
@@ -159,6 +165,9 @@ async def create(
     )
     session.add(conversion)
     session.flush()
+    # Store the segmentation now, so an upload's structure is the authoritative split
+    # and the run does not have to guess it back out of plain text.
+    runner.store_segments(session, conversion, segments or segment_text(text))
     return RedirectResponse(f"/k/{conversion.id}", status_code=303)
 
 

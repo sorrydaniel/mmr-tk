@@ -29,10 +29,16 @@ def clean_env(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def fast_mock(monkeypatch):
-    """The 1.5 s mock delay exists for the UI, not for the test suite."""
+    """The 1.5 s mock delay exists for the UI, not for the test suite.
+
+    Runs are also forced inline, so a test can assert on the result immediately. The
+    backgrounding itself is covered separately, in test_background_runs.py.
+    """
+    from app import runner
     from app.converter import mock
 
     monkeypatch.setattr(mock, "MOCK_DELAY_SECONDS", 0.0)
+    monkeypatch.setattr(runner, "INLINE", True)
     yield
 
 
